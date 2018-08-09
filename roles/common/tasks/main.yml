@@ -1,17 +1,33 @@
 ---
+- name: Wait for automatic system updates
+  shell: while sudo fuser /var/lib/dpkg/lock >/dev/null 2>&1; do sleep; done;
+
 - name: Ensure hostname set
   hostname: name={{ inventory_hostname }}
   when: not inventory_hostname is match('(\d{1,3}\.){3}\d{1,3}')
   register: hostname
   tags: hostname
 
-- name: Ensure hostname is in /etc/hosts
+- name: Build hosts file
   lineinfile:
     dest=/etc/hosts
-    regexp="^{{ ansible_default_ipv4.address }}.+$"
-    line="{{ ansible_default_ipv4.address }} {{ ansible_fqdn }} {{ ansible_hostname }}"
+    regexp='.*{{ item }}$'
+    line='{{ hostvars[item].ansible_default_ipv4.address }} {{item}}'
+    state=present
+  when: hostvars[item].ansible_default_ipv4.address is defined
+  with_items: "{{ groups['all'] }}"
   register: hostname
   tags: hostname
+
+- name: Add an apt key-1
+  apt_key:
+    keyserver: keyserver.ubuntu.com
+    id: 8B48AD6246925553
+
+- name: Add an apt key-2
+  apt_key:
+    keyserver: keyserver.ubuntu.com
+    id: 9D6D8F6BC857C906
 
 - name: Enabling cgroup options at boot
   copy:
@@ -23,6 +39,11 @@
   register: cmdline
   tags:
     - boot
+
+- name: Enable br_netfilter
+  modprobe:
+    name: br_netfilter
+    state: present
 
 - name: apt-get update
   apt:
@@ -36,24 +57,23 @@
     upgrade=full
 
 - name: Reboot
-  shell: sleep 2 && shutdown -r now "Ansible Reboot for /boot/cmdline.txt Change"
+  shell: "sleep 2 && shutdown -r now"
   async: 1
   poll: 0
   ignore_errors: True
-  when: cmdline or hostname is changed
+  when: cmdline.changed
   tags:
     - boot
     - shutdown
 
 - name: Wait for Reboot
-  local_action: wait_for
-  args:
-    host: "{{ inventory_hostname }}"
-    port: 22
-    delay: 20
-    timeout: 180
+  wait_for_connection:
+    connect_timeout: 20
+    sleep: 5
+    delay: 5
+    timeout: 300
   become: False
-  when: cmdline or hostname is changed
+  when: cmdline.changed
   tags:
     - boot
     - shutdown
