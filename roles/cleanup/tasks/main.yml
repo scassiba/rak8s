@@ -30,17 +30,15 @@
   become: True
 
 - name: Reboot
-  shell: sleep 2 && shutdown -r now "Ansible Reboot"
+  shell: "sleep 2 && shutdown -r now"
   async: 1
   poll: 0
   ignore_errors: True
 
 - name: Wait for Reboot
-  local_action: wait_for
-  args:
-    host: "{{ inventory_hostname }}"
-    port: 22
-    delay: 15
-    timeout: 120
+  wait_for_connection:
+    connect_timeout: 20
+    sleep: 5
+    delay: 5
+    timeout: 300
   become: False
-
