@@ -1,6 +1,12 @@
-rak8s000    ansible_host=192.168.86.203
-rak8s001    ansible_host=192.168.86.204
-rak8s002    ansible_host=192.168.86.205
+node-01   ansible_host=192.168.0.14
+node-02   ansible_host=192.168.0.15
+node-03   ansible_host=192.168.0.18
+node-04   ansible_host=192.168.0.17
+node-05   ansible_host=192.168.0.16
+node-06   ansible_host=192.168.0.19
 
 [master]
-rak8s000
+node-01
+
+[workers]
+node-0[2:6]
